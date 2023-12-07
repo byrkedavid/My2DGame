@@ -39,6 +39,7 @@ public abstract class Entity {
     public String knockBackDirection;
     public boolean guarding = false;
     public boolean transparent = false;
+    public boolean offBalance = false;
 
     // COUNTER
     public int spriteCounter = 0;
@@ -48,6 +49,8 @@ public abstract class Entity {
     int dyingCounter = 0;
     int hpBarCounter = 0;
     int knockBackCounter = 0;
+    public int guardCounter = 0;
+    int offBalanceCounter = 0;
 
     // CHARACTER ATTRIBUTES
     public String name;
@@ -282,6 +285,13 @@ public abstract class Entity {
         if(shotAvailableCounter < 30){
             shotAvailableCounter++;
         }
+        if(offBalance){
+            offBalanceCounter++;
+            if(offBalanceCounter > 60){
+                offBalance = false;
+                offBalanceCounter = 0;
+            }
+        }
     }
     public void checkAttackOrNot(int rate, int straight, int horizontal){
 
@@ -432,7 +442,6 @@ public abstract class Entity {
                 gp.player.damageProjectile(projectileIndex);
             }
 
-
             // After checking collision, restore the original data
             worldX = currentWorldX;
             worldY = currentWorldY;
@@ -450,15 +459,26 @@ public abstract class Entity {
 
         if(!gp.player.invincible){
 
-            int damage = attack - defense;
+            int damage = attack - gp.player.defense;
 
             // Get an opposite direction of this attacker
             String canGuardDirection = getOppositeDirection(direction);
 
             if(gp.player.guarding && gp.player.direction.equals(canGuardDirection)){
+                // Parry
+                if(gp.player.guardCounter < 10){ // 10 frame window to parry
+                    damage = 0;
+                    gp.playSE(16);
+                    setKnockBack(this, gp.player, knockBackPower);
+                    offBalance = true;
+                    spriteCounter =- 60; // makes sprite counter negative which freezes monster for one sec
+                }
+                else {
+                    // Normal guard
+                    damage /= 3;
+                    gp.playSE(15);
+                }
 
-                damage /= 3;
-                gp.playSE(15);
             }
             else {
                 // Not guarding
@@ -471,8 +491,9 @@ public abstract class Entity {
 
             if(damage != 0){
                 gp.player.transparent = true;
+                setKnockBack(gp.player, this, knockBackPower); // knockback if damage taken
             }
-
+            // setKnockBack(gp.player, this, knockBackPower); // knockback regardless of damage
             gp.player.life -= damage;
             gp.player.invincible = true;
         }

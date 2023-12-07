@@ -84,6 +84,7 @@ public class Player extends Entity{
         life = maxLife;
         mana = maxMana;
         invincible = false;
+        transparent = false;
     }
     public void setItems(){
 
@@ -157,12 +158,41 @@ public class Player extends Entity{
     }
     @Override
     public void update(){
+        if(knockBack){
 
-        if(attacking){
+            collisionOn = false;
+            gp.cChecker.checkTile(this);
+            gp.cChecker.checkObject(this, true);
+            gp.cChecker.checkEntity(this, gp.npc);
+            gp.cChecker.checkEntity(this, gp.monster);
+            gp.cChecker.checkEntity(this, gp.iTile);
+
+            if(collisionOn){
+                knockBackCounter = 0;
+                knockBack = false;
+                speed = defaultSpeed;
+            }
+            else {
+                switch(knockBackDirection){
+                    case "up": worldY -= speed; break;
+                    case "down": worldY += speed; break;
+                    case "left": worldX -= speed; break;
+                    case "right": worldX += speed; break;
+                }
+            }
+            knockBackCounter++;
+            if(knockBackCounter == 10){
+                knockBackCounter = 0;
+                knockBack = false;
+                speed = defaultSpeed;
+            }
+        }
+        else if(attacking){
             attacking();
         }
         else if (keyH.spacePressed){
             guarding = true;
+            guardCounter++;
         }
         else if(keyH.upPressed || keyH.downPressed || keyH.leftPressed || keyH.rightPressed || keyH.enterPressed){
             if(keyH.upPressed){
@@ -195,7 +225,7 @@ public class Player extends Entity{
             contactMonster(monsterIndex);
 
             // CHECK INTERACTIVE TILE COLLISION
-            int iTileIndex = gp.cChecker.checkEntity(this, gp.iTile);
+            gp.cChecker.checkEntity(this, gp.iTile);
 
             // CHECK EVENT
             gp.eHandler.checkEvent();
@@ -219,18 +249,29 @@ public class Player extends Entity{
             attackCanceled = false;
             gp.keyH.enterPressed = false;
             guarding = false;
+            guardCounter = 0;
 
             spriteCounter++;
             if(spriteCounter > 10){
                 if(spriteNum == 1){
                     spriteNum = 2;
-                } else if (spriteNum ==2){
+                }
+                else if (spriteNum == 2){
                     spriteNum = 1;
                 }
                 spriteCounter = 0;
             }
         }
-
+        else { /*
+            standCounter++;
+            if(standCounter == 20) {
+                spriteNum = 1;
+                standCounter = 0;
+            }
+            guarding = false;
+            guardCounter = 0
+            */
+        }
 
         if(gp.keyH.shotKeyPressed && !projectile.alive && shotAvailableCounter == 30 && projectile.haveResource(this)){
 
@@ -272,12 +313,12 @@ public class Player extends Entity{
         if(mana > maxMana){
             mana = maxMana;
         }
-        if(life <= 0){
-            gp.gameState = gp.gameOverState;
-            gp.ui.commandNum = -1;
-            gp.stopMusic();
-            gp.playSE(12);
-        }
+//        if(life <= 0){
+//            gp.gameState = gp.gameOverState;
+//            gp.ui.commandNum = -1;
+//            gp.stopMusic();
+//            gp.playSE(12);
+//        }
     }
     public void pickUpObject(int i){
 
@@ -353,6 +394,10 @@ public class Player extends Entity{
 
                 if(knockBackPower > 0){
                     setKnockBack(gp.monster[gp.currentMap][i], attacker, knockBackPower);
+                }
+
+                if(gp.monster[gp.currentMap][i].offBalance){
+                    attack *= 5;
                 }
 
                 int damage = attack - gp.monster[gp.currentMap][i].defense;
